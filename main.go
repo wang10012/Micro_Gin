@@ -27,13 +27,19 @@ func main() {
 		// /hello?name=wsj
 		c.String(http.StatusOK, "Hello %s !, Welcome to wsjgin!", c.Query("name"))
 	})
-
+	r.GET("/hello/:name", func(c *wsjgin.Context) {
+		c.String(http.StatusOK, "Hello %s !, Welcome to wsjgin!", c.GetParameter("name"))
+	})
+	r.GET("/assets/*filepath", func(c *wsjgin.Context) {
+		c.JSON(http.StatusOK, wsjgin.H{
+			"filepath": c.GetParameter("filepath"),
+		})
+	})
 	r.POST("/login", func(c *wsjgin.Context) {
 		c.JSON(http.StatusOK, wsjgin.H{
 			"username": c.PostForm("username"),
 			"password": c.PostForm("password"),
 		})
 	})
-
-	r.Run(":3453")
+	r.Run(":3432")
 }

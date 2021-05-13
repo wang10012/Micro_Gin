@@ -17,6 +17,8 @@ type Context struct {
 	Request *http.Request
 	Path    string
 	Method  string
+	// 新增参数集合
+	Parameters map[string]string
 }
 
 // 构造函数
@@ -27,6 +29,11 @@ func NewContext(w http.ResponseWriter, r *http.Request) *Context {
 		Path:    r.URL.Path,
 		Method:  r.Method,
 	}
+}
+
+func (c *Context) GetParameter(key string) string {
+	value, _ := c.Parameters[key]
+	return value
 }
 
 // 状态码设置

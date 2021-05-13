@@ -1,6 +1,9 @@
 package wsjgin
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+)
 
 // 只支持两种动态模糊匹配：
 // 1. /:name  2. /*filepath
@@ -58,7 +61,6 @@ func (node *trieNode) insert(pattern string, parts []string, height int) {
 
 // 搜索函数: 用于访问路由
 func (node *trieNode) search(parts []string, height int) *trieNode {
-	// 当目前节点为最后一个路由节点时：可能还未匹配成功，则去判断
 	if len(parts) == height || strings.HasPrefix(node.part, "*") {
 		if node.pattern == "" {
 			return nil
@@ -74,4 +76,19 @@ func (node *trieNode) search(parts []string, height int) *trieNode {
 		}
 	}
 	return nil
+}
+
+// 遍历当前节点作为根节点的子树
+func (node *trieNode) travel(nodes *([]*trieNode)) {
+	if node.pattern != "" {
+		*nodes = append(*nodes, node)
+	}
+	for _, child := range node.children {
+		child.travel(nodes)
+	}
+}
+
+// 打印节点内容
+func (node *trieNode) ToString() string {
+	return fmt.Sprintf("node{pattern=%s, part=%s, isFuzzy=%t}", node.pattern, node.part, node.isFuzzy)
 }
