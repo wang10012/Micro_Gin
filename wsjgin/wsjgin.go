@@ -1,36 +1,68 @@
 package wsjgin
 
 import (
+	"log"
 	"net/http"
 )
 
 type HandleFunc func(c *Context)
 
-// 构建RouterMap表 key:路径 value:handlefunc
-type RouterMap struct {
-	router *router
-}
-
-// 为RouterMap表添加路由和对应函数
-func (routerMap *RouterMap) addRouter(method string, pattern string, handler HandleFunc) {
-	routerMap.router.addRouter(method, pattern, handler)
-}
-
-// 调用addRouter()定义"GET"请求
-func (routerMap *RouterMap) GET(pattern string, handler HandleFunc) {
-	routerMap.addRouter("GET", pattern, handler)
-}
-
-// 调用addRouter()定义"POST"请求
-func (routerMap *RouterMap) POST(pattern string, handler HandleFunc) {
-	routerMap.addRouter("POST", pattern, handler)
-}
+type (
+	RouterGroup struct {
+		prefix      string
+		middlewares []HandleFunc
+		parent      *RouterGroup
+		// 所有的group共享一个routermap实例
+		routermap *RouterMap
+	}
+	// 构建RouterMap表
+	RouterMap struct {
+		*RouterGroup
+		router *router
+		groups []*RouterGroup
+	}
+)
 
 // 构造函数
 func Default() *RouterMap {
-	return &RouterMap{
+	routermap := &RouterMap{
 		router: NewRouter(),
 	}
+	routermap.RouterGroup = &RouterGroup{
+		routermap: routermap,
+	}
+	routermap.groups = []*RouterGroup{
+		routermap.RouterGroup,
+	}
+	return routermap
+}
+
+func (group *RouterGroup) Group(prefix string) *RouterGroup {
+	routermap := group.routermap
+	newGroup := &RouterGroup{
+		prefix:    group.prefix + prefix,
+		parent:    group,
+		routermap: routermap,
+	}
+	routermap.groups = append(routermap.groups, newGroup)
+	return newGroup
+}
+
+// 为RouterMap表添加路由和对应函数
+func (group *RouterGroup) addRouter(method string, subpattern string, handler HandleFunc) {
+	pattern := group.prefix + subpattern
+	log.Printf("Router %4s - %s", method, pattern)
+	group.routermap.router.addRouter(method, pattern, handler)
+}
+
+// 调用addRouter()定义"GET"请求
+func (group *RouterGroup) GET(pattern string, handler HandleFunc) {
+	group.addRouter("GET", pattern, handler)
+}
+
+// 调用addRouter()定义"POST"请求
+func (group *RouterGroup) POST(pattern string, handler HandleFunc) {
+	group.addRouter("POST", pattern, handler)
 }
 
 // 解析请求，查找RouterMap
