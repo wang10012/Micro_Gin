@@ -1,7 +1,6 @@
 package wsjgin
 
 import (
-	"errors"
 	"net/http"
 	"strings"
 )
@@ -95,12 +94,13 @@ func (r *router) handleFunc(c *Context) {
 	if node != nil {
 		c.Parameters = parameters
 		key := c.Method + "-" + node.pattern
-		caller, ok := r.handlers[key]
-		if !ok {
-			panic(errors.New(key + " cannot find in handlers"))
-		}
-		caller(c)
+		// 将用户自定义路由函数加入context的handlers集合中
+		c.handlers = append(c.handlers, r.handlers[key])
 	} else {
-		c.String(http.StatusNotFound, "404 NOT FOUND: %s\n", c.Path)
+		c.handlers = append(c.handlers, func(c *Context) {
+			c.String(http.StatusNotFound, "404 NOT FOUND: %s\n", c.Path)
+		})
 	}
+	// 开始执行context中handlers中的函数
+	c.Next()
 }

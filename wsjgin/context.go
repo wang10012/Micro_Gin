@@ -19,6 +19,10 @@ type Context struct {
 	Method  string
 	// 新增参数集合
 	Parameters map[string]string
+	// 新增中间件有关属性
+	// 中间件函数和用户定义的handler都会储存在内
+	handlers []HandleFunc
+	index    int
 }
 
 // 构造函数
@@ -28,7 +32,23 @@ func NewContext(w http.ResponseWriter, r *http.Request) *Context {
 		Request: r,
 		Path:    r.URL.Path,
 		Method:  r.Method,
+		index:   -1,
 	}
+}
+
+func (c *Context) Next() {
+	// 在next函数中才调用函数
+	c.index++
+	length := len(c.handlers)
+	for ; c.index < length; c.index++ {
+		c.handlers[c.index](c)
+	}
+}
+
+// fail函数
+func (c *Context) Fail(code int, err string) {
+	c.index = len(c.handlers)
+	c.JSON(code, H{"message": err})
 }
 
 func (c *Context) GetParameter(key string) string {
