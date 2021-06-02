@@ -28,6 +28,12 @@ type (
 )
 
 // 构造函数
+func NewDefault() *RouterMap {
+	routermap := Default()
+	routermap.Use(Logger(), Recovery())
+	return routermap
+}
+
 func Default() *RouterMap {
 	routermap := &RouterMap{
 		router: NewRouter(),
