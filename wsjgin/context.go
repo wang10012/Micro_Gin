@@ -23,6 +23,8 @@ type Context struct {
 	// 中间件函数和用户定义的handler都会储存在内
 	handlers []HandleFunc
 	index    int
+	// routermap指针
+	routermap *RouterMap
 }
 
 // 构造函数
@@ -91,10 +93,12 @@ func (c *Context) JSON(statusCode int, obj interface{}) {
 }
 
 // 构造HTML响应
-func (c *Context) HTML(statusCode int, html string) {
+func (c *Context) HTML(statusCode int, name string, data interface{}) {
 	c.SetHeader("Content-Type", "text/html")
 	c.SetStatusCdoe(statusCode)
-	c.Writer.Write([]byte(html))
+	if err := c.routermap.htmlTemplates.ExecuteTemplate(c.Writer, name, data); err != nil {
+		c.Fail(500, err.Error())
+	}
 }
 
 // 构造String响应

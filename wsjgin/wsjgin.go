@@ -1,8 +1,10 @@
 package wsjgin
 
 import (
+	"html/template"
 	"log"
 	"net/http"
+	"path"
 	"strings"
 )
 
@@ -18,8 +20,10 @@ type (
 	// 构建RouterMap表
 	RouterMap struct {
 		*RouterGroup
-		router *router
-		groups []*RouterGroup
+		router        *router
+		groups        []*RouterGroup
+		htmlTemplates *template.Template // for html render
+		funcMap       template.FuncMap   // for html render
 	}
 )
 
@@ -35,6 +39,16 @@ func Default() *RouterMap {
 		routermap.RouterGroup,
 	}
 	return routermap
+}
+
+// 设置自定义渲染函数
+func (routermap *RouterMap) SetFuncMap(funcMap template.FuncMap) {
+	routermap.funcMap = funcMap
+}
+
+// 加载模板
+func (routermap *RouterMap) LoadHTMLGlob(pattern string) {
+	routermap.htmlTemplates = template.Must(template.New("").Funcs(routermap.funcMap).ParseGlob(pattern))
 }
 
 func (group *RouterGroup) Group(prefix string) *RouterGroup {
@@ -80,10 +94,34 @@ func (routerMap *RouterMap) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	c := NewContext(w, r)
 	// 中间件加入context的函数集合
 	c.handlers = middlewares
+	c.routermap = routerMap
 	routerMap.router.handleFunc(c)
 }
 
 // 启动服务
 func (routerMap *RouterMap) Run(address string) (err error) {
 	return http.ListenAndServe(address, routerMap)
+}
+
+// 创建静态函数
+func (group *RouterGroup) createStaticHandler(relativePath string, fs http.FileSystem) HandleFunc {
+	absolutePath := path.Join(group.prefix, relativePath)
+	fileServer := http.StripPrefix(absolutePath, http.FileServer(fs))
+	return func(c *Context) {
+		file := c.GetParameter("filepath")
+		// 检查此文件是否存在
+		if _, err := fs.Open(file); err != nil {
+			c.SetStatusCdoe(http.StatusNotFound)
+			return
+		}
+		fileServer.ServeHTTP(c.Writer, c.Request)
+	}
+}
+
+// 后端路由和文件绝对地址映射，注册路由
+func (group *RouterGroup) Static(relativePath string, root string) {
+	handler := group.createStaticHandler(relativePath, http.Dir(root))
+	urlPattern := path.Join(relativePath, "/*filepath")
+	// 注册GET函数
+	group.GET(urlPattern, handler)
 }
