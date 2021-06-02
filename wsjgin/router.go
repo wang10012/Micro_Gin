@@ -69,6 +69,7 @@ func (r *router) getRouter(method string, path string) (*trieNode, map[string]st
 			}
 			if part[0] == '*' && len(part) > 1 {
 				parameters[part[1:]] = strings.Join(pathParts[index:], "/")
+				break
 			}
 		}
 		return node, parameters
